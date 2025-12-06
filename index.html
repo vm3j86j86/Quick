@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -628,12 +629,12 @@
 
     </div>
 
-    <script type="module">
-        import { createApp, reactive, toRefs, computed, onMounted } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+     <script type="module">
+        // 1. 新增引入 'ref'
+        import { createApp, reactive, toRefs, computed, onMounted, ref } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // 您的 Firebase 設定
         const firebaseConfig = {
           apiKey: "AIzaSyAVExpDtx81JdHHtWgMyMaa-lp00IYcBkA",
           authDomain: "seoul-9f211.firebaseapp.com",
@@ -648,6 +649,10 @@
 
         createApp({
             setup() {
+                // 2. 定義 DOM 元素參照 (Refs)
+                const bannerInput = ref(null);
+                const fileInput = ref(null);
+
                 const state = reactive({
                     currentTab: 'schedule',
                     currentDayIndex: 0,
@@ -710,10 +715,8 @@
 
                 const totalKRW = computed(() => state.data.expenses.filter(e => e.currency === 'KRW').reduce((sum, item) => sum + item.amount, 0));
                 const totalTWD = computed(() => state.data.expenses.filter(e => e.currency === 'TWD').reduce((sum, item) => sum + item.amount, 0));
-                
                 const wawaPaidKRW = computed(() => state.data.expenses.filter(e => e.payer === 'Wawa' && e.currency === 'KRW').reduce((sum, item) => sum + item.amount, 0));
                 const wawaPaidTWD = computed(() => state.data.expenses.filter(e => e.payer === 'Wawa' && e.currency === 'TWD').reduce((sum, item) => sum + item.amount, 0));
-                
                 const cherisaPaidKRW = computed(() => state.data.expenses.filter(e => e.payer === 'Cherisa' && e.currency === 'KRW').reduce((sum, item) => sum + item.amount, 0));
                 const cherisaPaidTWD = computed(() => state.data.expenses.filter(e => e.payer === 'Cherisa' && e.currency === 'TWD').reduce((sum, item) => sum + item.amount, 0));
 
@@ -734,7 +737,15 @@
                 const currentDayData = computed(() => state.data.itinerary[state.currentDayIndex]);
                 const filteredShoppingList = computed(() => state.data.shoppingList.filter(item => item.owner === state.currentShopper));
 
-                const triggerBannerUpload = () => document.querySelector('input[type=file]').click();
+                // 3. 修正：使用 ref 來觸發正確的 input
+                const triggerBannerUpload = () => {
+                    if (bannerInput.value) bannerInput.value.click();
+                };
+                
+                // 4. 新增：這就是原本缺少的觸發函數
+                const triggerFileUpload = () => {
+                    if (fileInput.value) fileInput.value.click();
+                };
                 
                 const handleBannerChange = (event) => {
                     const file = event.target.files[0];
@@ -852,6 +863,8 @@
 
                 return {
                     ...toRefs(state),
+                    // 5. 回傳 Refs 與函數
+                    bannerInput, fileInput, triggerFileUpload,
                     tabs, editingEvent,
                     totalKRW, totalTWD, wawaPaidKRW, wawaPaidTWD, cherisaPaidKRW, cherisaPaidTWD,
                     settlementKRWText, settlementTWDText, currentDayData, filteredShoppingList,
@@ -865,3 +878,4 @@
     </script>
 </body>
 </html>
+
