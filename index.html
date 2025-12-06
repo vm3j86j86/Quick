@@ -629,7 +629,7 @@
     </div>
 
     <script type="module">
-        import { createApp, reactive, toRefs, computed, onMounted, ref } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'; // 1. 記得引入 ref
+        import { createApp, reactive, toRefs, computed, onMounted } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -648,10 +648,6 @@
 
         createApp({
             setup() {
-                // 2. 新增這兩個 ref 變數來綁定 HTML 元素
-                const fileInput = ref(null);
-                const bannerInput = ref(null);
-
                 const state = reactive({
                     currentTab: 'schedule',
                     currentDayIndex: 0,
@@ -708,7 +704,7 @@
                         await setDoc(doc(db, "trips", "seoul"), JSON.parse(JSON.stringify(state.data)));
                     } catch (e) {
                         console.error("Error adding document: ", e);
-                        alert("儲存失敗，請檢查網路！(如果是圖片太大也可能失敗)");
+                        alert("儲存失敗，請檢查網路！");
                     }
                 };
 
@@ -738,12 +734,8 @@
                 const currentDayData = computed(() => state.data.itinerary[state.currentDayIndex]);
                 const filteredShoppingList = computed(() => state.data.shoppingList.filter(item => item.owner === state.currentShopper));
 
-                // 3. 修正觸發 Banner 上傳的邏輯，改用 ref
-                const triggerBannerUpload = () => bannerInput.value.click();
+                const triggerBannerUpload = () => document.querySelector('input[type=file]').click();
                 
-                // 4. 新增觸發行程圖片上傳的邏輯
-                const triggerFileUpload = () => fileInput.value.click();
-
                 const handleBannerChange = (event) => {
                     const file = event.target.files[0];
                     if (file) {
@@ -839,12 +831,7 @@
                 const handleFileChange = (event) => {
                     const file = event.target.files[0];
                     if (file) {
-                        // Firestore 對文件大小有限制 (1MB)，Base64 很容易超過
-                        // 建議提醒用戶盡量用截圖或壓縮過的圖片
-                        if(file.size > 800000) { 
-                            alert("圖片太大了！請使用截圖或小於 800KB 的照片，否則無法同步。");
-                            return;
-                        }
+                        if(file.size > 500000) alert("提醒：圖片過大可能會導致同步失敗，建議使用小圖截圖");
                         const reader = new FileReader();
                         reader.onload = (e) => editingEvent.image = e.target.result;
                         reader.readAsDataURL(file);
@@ -865,8 +852,6 @@
 
                 return {
                     ...toRefs(state),
-                    // 5. 務必將這三個變數 return 出去給 HTML 使用
-                    fileInput, bannerInput, triggerFileUpload, 
                     tabs, editingEvent,
                     totalKRW, totalTWD, wawaPaidKRW, wawaPaidTWD, cherisaPaidKRW, cherisaPaidTWD,
                     settlementKRWText, settlementTWDText, currentDayData, filteredShoppingList,
