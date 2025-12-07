@@ -1,15 +1,20 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Seoul Trip 2025 (共編版)</title>
+    <title>Seoul Trip 2025 (拖曳排序版)</title>
     
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
+    <!-- SortableJS (新增：用於拖曳功能) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
 
     <script>
@@ -37,6 +42,9 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
             background-color: #FDFBF7;
+            /* 防止手機長按選取文字，提升拖曳體驗 */
+            user-select: none; 
+            -webkit-user-select: none;
         }
         body::-webkit-scrollbar {
             display: none;
@@ -47,32 +55,12 @@
             position: relative;
             background-color: #ddd; 
             overflow: hidden;
-            cursor: pointer;
         }
         .header-image {
             width: 100%;
             height: 100%;
             object-fit: cover;
             object-position: center;
-            transition: transform 0.3s ease;
-        }
-        .header-container:hover .header-image {
-            transform: scale(1.02);
-        }
-        .header-overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.05);
-            display: flex;
-            align-items: flex-end;
-            justify-content: flex-start;
-            padding: 24px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            cursor: pointer;
-        }
-        .header-container:hover .header-overlay {
-            opacity: 1;
         }
         .main-content {
             margin-top: -30px; 
@@ -119,24 +107,28 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        .modal-enter-active,
-        .modal-leave-active {
-            transition: opacity 0.3s ease;
+        /* 拖曳時的樣式 */
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #F3E9D2;
         }
-        .modal-enter-from,
-        .modal-leave-to {
-            opacity: 0;
+        .sortable-drag {
+            cursor: grabbing;
         }
+        
+        .modal-enter-active, .modal-leave-active { transition: opacity 0.3s ease; }
+        .modal-enter-from, .modal-leave-to { opacity: 0; }
     </style>
 </head>
 <body class="text-soft-brown antialiased selection:bg-accent-beige">
 
     <div id="app">
-               <header class="header-container">
-            <img src="./image.PNG" 
+        <!-- 頁首區域 (固定圖片) -->
+        <header class="header-container">
+            <img src="./image.png" 
                  class="header-image" 
                  alt="Header Banner"
-                 onerror="this.style.display='none'; alert('請確認 GitHub 上是否已上傳 image.png');">
+                 onerror="this.style.display='none';">
             
             <div class="absolute top-8 left-6 text-white drop-shadow-md">
                 <h1 class="text-3xl font-bold tracking-wider">Seoul Trip</h1>
@@ -157,12 +149,14 @@
             </div>
         </header>
 
+        <!-- 主內容區域 -->
         <main class="main-content px-5 pt-8">
             
+            <!-- 1. 行程表 -->
             <div v-if="currentTab === 'schedule'" class="space-y-4">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-2xl font-bold">每日行程</h2>
-                    <span class="text-xs text-gray-400">點擊天氣可切換</span>
+                    <span class="text-xs text-gray-400">長按行程卡片可拖曳排序</span>
                 </div>
 
                 <div class="flex overflow-x-auto gap-3 pb-2 mb-2 no-scrollbar -mx-5 px-5">
@@ -192,50 +186,56 @@
                         </div>
                     </div>
                     
-                    <div v-if="currentDayData.events.length > 0" class="space-y-6 relative pl-2">
-                        <div class="absolute left-[9px] top-2 bottom-4 w-[2px] bg-accent-beige rounded-full"></div>
+                    <div v-if="currentDayData.events.length > 0" class="relative pl-2">
+                        <!-- 時間軸線 (獨立於拖曳區塊外) -->
+                        <div class="absolute left-[9px] top-2 bottom-4 w-[2px] bg-accent-beige rounded-full z-0"></div>
 
-                        <div v-for="(item, i) in currentDayData.events" :key="i" class="flex gap-4 relative group">
-                            <div class="z-10 mt-1 relative">
-                                <div class="w-4 h-4 rounded-full bg-cream-bg border-4 border-soft-brown"></div>
-                            </div>
-                            
-                            <div class="flex-1 bg-gray-50 rounded-xl p-3 border border-transparent hover:border-accent-beige transition-colors relative">
-                                <div class="flex justify-between items-start mb-1">
-                                    <h4 class="font-bold text-soft-brown text-lg">{{ item.title }}</h4>
-                                    <button @click="openEditModal(i)" class="text-gray-300 hover:text-soft-brown p-1">
-                                        <i class="ph-bold ph-pencil-simple"></i>
-                                    </button>
+                        <!-- 拖曳容器：ref="eventListRef" -->
+                        <div ref="eventListRef" class="space-y-6 relative z-10">
+                            <div v-for="(item, i) in currentDayData.events" :key="item.title + i" class="flex gap-4 relative group cursor-grab active:cursor-grabbing">
+                                <div class="z-10 mt-1 relative">
+                                    <div class="w-4 h-4 rounded-full bg-cream-bg border-4 border-soft-brown"></div>
                                 </div>
                                 
-                                <span v-if="item.time" class="inline-block text-xs font-bold text-white bg-highlight px-2 py-0.5 rounded mb-2">
-                                    {{ item.time }}
-                                </span>
-
-                                <div v-if="item.image" 
-                                     @click.stop="openZoomModal(item.image)"
-                                     class="mb-3 rounded-lg overflow-hidden w-full max-h-48 border border-gray-100 shadow-sm cursor-zoom-in relative group">
-                                    <img :src="item.image" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="Event Image">
-                                    <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                        <i class="ph-bold ph-magnifying-glass-plus text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md text-2xl"></i>
+                                <div class="flex-1 bg-gray-50 rounded-xl p-3 border border-transparent hover:border-accent-beige transition-colors relative select-none">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <h4 class="font-bold text-soft-brown text-lg">{{ item.title }}</h4>
+                                        <!-- 編輯按鈕：阻止冒泡以免觸發拖曳 -->
+                                        <button @click.stop="openEditModal(i)" @mousedown.stop @touchstart.stop class="text-gray-300 hover:text-soft-brown p-1">
+                                            <i class="ph-bold ph-pencil-simple"></i>
+                                        </button>
                                     </div>
-                                </div>
+                                    
+                                    <span v-if="item.time" class="inline-block text-xs font-bold text-white bg-highlight px-2 py-0.5 rounded mb-2">
+                                        {{ item.time }}
+                                    </span>
 
-                                <p v-if="item.desc" class="text-sm text-gray-500 whitespace-pre-line leading-relaxed mb-2">{{ item.desc }}</p>
-                                
-                                <div v-if="item.note" class="bg-red-50 p-2 rounded-lg border border-red-100 mb-2">
-                                    <p class="text-xs text-alert-red font-bold flex items-center gap-1">
-                                        <i class="ph-fill ph-star"></i> {{ item.note }}
-                                    </p>
-                                </div>
+                                    <div v-if="item.image" 
+                                         @click.stop="openZoomModal(item.image)"
+                                         @mousedown.stop @touchstart.stop
+                                         class="mb-3 rounded-lg overflow-hidden w-full max-h-48 border border-gray-100 shadow-sm relative group">
+                                        <img :src="item.image" class="w-full h-full object-cover" alt="Event Image">
+                                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                                            <i class="ph-bold ph-magnifying-glass-plus text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md text-2xl"></i>
+                                        </div>
+                                    </div>
 
-                                <div class="flex flex-wrap gap-2 mt-2">
-                                    <a v-if="item.location" :href="getNaverLink(item.location)" target="_blank" class="inline-flex items-center gap-1 text-xs text-green-600 font-bold hover:underline bg-green-50 px-2 py-1.5 rounded-lg border border-green-100 transition-colors hover:bg-green-100">
-                                        <i class="ph-fill ph-map-pin"></i> {{ item.location }}
-                                    </a>
-                                    <a v-if="item.link" :href="item.link" target="_blank" class="inline-flex items-center gap-1 text-xs text-blue-600 font-bold hover:underline bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-100 transition-colors hover:bg-blue-100">
-                                        <i class="ph-bold ph-link"></i> 開啟連結
-                                    </a>
+                                    <p v-if="item.desc" class="text-sm text-gray-500 whitespace-pre-line leading-relaxed mb-2">{{ item.desc }}</p>
+                                    
+                                    <div v-if="item.note" class="bg-red-50 p-2 rounded-lg border border-red-100 mb-2">
+                                        <p class="text-xs text-alert-red font-bold flex items-center gap-1">
+                                            <i class="ph-fill ph-star"></i> {{ item.note }}
+                                        </p>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        <a v-if="item.location" :href="getNaverLink(item.location)" target="_blank" @mousedown.stop @touchstart.stop class="inline-flex items-center gap-1 text-xs text-green-600 font-bold hover:underline bg-green-50 px-2 py-1.5 rounded-lg border border-green-100 transition-colors hover:bg-green-100">
+                                            <i class="ph-fill ph-map-pin"></i> {{ item.location }}
+                                        </a>
+                                        <a v-if="item.link" :href="item.link" target="_blank" @mousedown.stop @touchstart.stop class="inline-flex items-center gap-1 text-xs text-blue-600 font-bold hover:underline bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-100 transition-colors hover:bg-blue-100">
+                                            <i class="ph-bold ph-link"></i> 開啟連結
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -252,6 +252,7 @@
                 </div>
             </div>
 
+            <!-- 2. 資訊 -->
             <div v-if="currentTab === 'info'" class="space-y-5">
                 <h2 class="text-2xl font-bold mb-4">旅程資訊</h2>
                 <div class="bg-amber-50 rounded-2xl p-5 border border-amber-100">
@@ -373,6 +374,7 @@
                  </a>
             </div>
 
+            <!-- 3. 購物清單 -->
             <div v-if="currentTab === 'shopping'" class="space-y-4">
                 <h2 class="text-2xl font-bold mb-2">購物清單</h2>
                 
@@ -424,6 +426,7 @@
                 </div>
             </div>
 
+            <!-- 4. 花費 -->
             <div v-if="currentTab === 'money'" class="space-y-5">
                 <h2 class="text-2xl font-bold mb-4">旅費記帳</h2>
                 
@@ -539,6 +542,7 @@
 
         </main>
         
+        <!-- Modal 區域 -->
         <transition name="modal">
             <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="closeModal"></div>
@@ -621,8 +625,9 @@
 
     </div>
 
+    <!-- Firebase 與 Vue 核心程式碼 -->
     <script type="module">
-        import { createApp, reactive, toRefs, computed, onMounted, ref } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+        import { createApp, reactive, toRefs, computed, onMounted, ref, watch, nextTick } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
@@ -640,23 +645,21 @@
 
         createApp({
             setup() {
-                // 這裡保留 fileInput 是為了行程內的照片上傳，bannerInput 已移除
                 const fileInput = ref(null);
+                const eventListRef = ref(null); // 用於 SortableJS 的參照
+                let sortableInstance = null;
 
                 const state = reactive({
                     currentTab: 'schedule',
                     currentDayIndex: 0,
-                    // headerImage 已移除，直接在 HTML 使用 src="./image.png"
                     showToast: false,
                     showModal: false,
                     isEditing: false,
                     editingIndex: -1,
                     zoomedImage: null,
-                    
                     newItem: '',
                     currentShopper: 'Wawa',
                     newExpense: { item: '', amount: null, payer: 'Wawa', currency: 'KRW' },
-                    
                     data: {
                         shoppingList: [],
                         expenses: [],
@@ -681,6 +684,40 @@
                     { id: 'money', name: '花費', icon: 'ph-fill ph-coins' },
                 ];
                 const weatherTypes = ['sunny', 'cloudy', 'rain', 'snow'];
+
+                // 初始化 SortableJS
+                const initSortable = () => {
+                    if (sortableInstance) sortableInstance.destroy();
+                    
+                    if (eventListRef.value) {
+                        sortableInstance = new Sortable(eventListRef.value, {
+                            animation: 150,
+                            delay: 200, // 長按 0.2 秒觸發
+                            delayOnTouchOnly: true, // 只在觸控裝置開啟延遲
+                            ghostClass: 'sortable-ghost',
+                            dragClass: 'sortable-drag',
+                            onEnd: (evt) => {
+                                // 更新資料陣列
+                                const item = state.data.itinerary[state.currentDayIndex].events.splice(evt.oldIndex, 1)[0];
+                                state.data.itinerary[state.currentDayIndex].events.splice(evt.newIndex, 0, item);
+                                // 儲存到 Firebase
+                                saveToFirebase();
+                            }
+                        });
+                    }
+                };
+
+                // 監聽 Tab 或 Day 變化來重新初始化拖曳功能
+                watch(
+                    [() => state.currentTab, () => state.currentDayIndex, () => state.data.itinerary],
+                    async () => {
+                        if (state.currentTab === 'schedule') {
+                            await nextTick(); // 等待 DOM 更新
+                            initSortable();
+                        }
+                    },
+                    { deep: true } // 深度監聽資料變化
+                );
 
                 onMounted(() => {
                     const docRef = doc(db, "trips", "seoul");
@@ -799,7 +836,7 @@
                         state.data.itinerary[state.currentDayIndex].events[state.editingIndex] = { ...editingEvent };
                     } else {
                         state.data.itinerary[state.currentDayIndex].events.push({ ...editingEvent });
-                        state.data.itinerary[state.currentDayIndex].events.sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
+                        // 移除自動排序，因為現在允許手動拖曳
                     }
                     saveToFirebase();
                     closeModal();
@@ -837,7 +874,7 @@
 
                 return {
                     ...toRefs(state),
-                    fileInput, triggerFileUpload,
+                    fileInput, triggerFileUpload, eventListRef,
                     tabs, editingEvent,
                     totalKRW, totalTWD, wawaPaidKRW, wawaPaidTWD, cherisaPaidKRW, cherisaPaidTWD,
                     settlementKRWText, settlementTWDText, currentDayData, filteredShoppingList,
@@ -851,4 +888,3 @@
     </script>
 </body>
 </html>
-
