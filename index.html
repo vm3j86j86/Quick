@@ -132,24 +132,16 @@
 <body class="text-soft-brown antialiased selection:bg-accent-beige">
 
     <div id="app">
-        <header class="header-container" @click="triggerBannerUpload">
-            <img :src="headerImage" 
+               <header class="header-container">
+            <img src="./image.png" 
                  class="header-image" 
                  alt="Header Banner"
-                 @error="handleImageError">
-            
-            <div class="header-overlay">
-                <div class="bg-black/40 text-white p-3 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg hover:bg-black/60 transition-colors">
-                    <i class="ph-bold ph-camera text-xl"></i>
-                </div>
-            </div>
+                 onerror="this.style.display='none'; alert('請確認 GitHub 上是否已上傳 image.png');">
             
             <div class="absolute top-8 left-6 text-white drop-shadow-md">
                 <h1 class="text-3xl font-bold tracking-wider">Seoul Trip</h1>
                 <p class="text-sm opacity-90 tracking-widest">2025.12.27 - 2026.01.02</p>
             </div>
-
-            <input type="file" ref="bannerInput" @change="handleBannerChange" accept="image/*" class="hidden">
 
             <div class="nav-tabs">
                 <button 
@@ -629,8 +621,7 @@
 
     </div>
 
-     <script type="module">
-        // 1. 新增引入 'ref'
+    <script type="module">
         import { createApp, reactive, toRefs, computed, onMounted, ref } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -649,14 +640,13 @@
 
         createApp({
             setup() {
-                // 2. 定義 DOM 元素參照 (Refs)
-                const bannerInput = ref(null);
+                // 這裡保留 fileInput 是為了行程內的照片上傳，bannerInput 已移除
                 const fileInput = ref(null);
 
                 const state = reactive({
                     currentTab: 'schedule',
                     currentDayIndex: 0,
-                    headerImage: './image.png',
+                    // headerImage 已移除，直接在 HTML 使用 src="./image.png"
                     showToast: false,
                     showModal: false,
                     isEditing: false,
@@ -709,7 +699,6 @@
                         await setDoc(doc(db, "trips", "seoul"), JSON.parse(JSON.stringify(state.data)));
                     } catch (e) {
                         console.error("Error adding document: ", e);
-                        alert("儲存失敗，請檢查網路！");
                     }
                 };
 
@@ -737,23 +726,8 @@
                 const currentDayData = computed(() => state.data.itinerary[state.currentDayIndex]);
                 const filteredShoppingList = computed(() => state.data.shoppingList.filter(item => item.owner === state.currentShopper));
 
-                // 3. 修正：使用 ref 來觸發正確的 input
-                const triggerBannerUpload = () => {
-                    if (bannerInput.value) bannerInput.value.click();
-                };
-                
-                // 4. 新增：這就是原本缺少的觸發函數
                 const triggerFileUpload = () => {
                     if (fileInput.value) fileInput.value.click();
-                };
-                
-                const handleBannerChange = (event) => {
-                    const file = event.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => state.headerImage = e.target.result;
-                        reader.readAsDataURL(file);
-                    }
                 };
 
                 const openZoomModal = (img) => state.zoomedImage = img;
@@ -863,12 +837,11 @@
 
                 return {
                     ...toRefs(state),
-                    // 5. 回傳 Refs 與函數
-                    bannerInput, fileInput, triggerFileUpload,
+                    fileInput, triggerFileUpload,
                     tabs, editingEvent,
                     totalKRW, totalTWD, wawaPaidKRW, wawaPaidTWD, cherisaPaidKRW, cherisaPaidTWD,
                     settlementKRWText, settlementTWDText, currentDayData, filteredShoppingList,
-                    triggerBannerUpload, handleBannerChange, openZoomModal, closeZoomModal,
+                    openZoomModal, closeZoomModal,
                     addExpense, removeExpense, addItem, deleteItem, toggleItemDone,
                     cycleWeather, openAddModal, openEditModal, closeModal, saveEvent, deleteEvent,
                     handleFileChange, removeImage, getNaverLink, getWeatherIcon, getWeatherName, copyText, handleImageError
