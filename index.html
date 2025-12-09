@@ -240,7 +240,8 @@
                                     </div>
 
                                     <div class="flex flex-wrap gap-2 mt-2">
-                                        <a v-if="item.location" :href="getNaverLink(item.location)" target="_blank" @mousedown.stop @touchstart.stop class="inline-flex items-center gap-1 text-xs text-green-600 font-bold hover:underline bg-green-50 px-2 py-1.5 rounded-lg border border-green-100 transition-colors hover:bg-green-100">
+                                        <!-- 修改地點連結邏輯：優先使用 mapUrl，若無則回退到 Naver 搜尋 -->
+                                        <a v-if="item.location" :href="item.mapUrl || getNaverLink(item.location)" target="_blank" @mousedown.stop @touchstart.stop class="inline-flex items-center gap-1 text-xs text-green-600 font-bold hover:underline bg-green-50 px-2 py-1.5 rounded-lg border border-green-100 transition-colors hover:bg-green-100">
                                             <i class="ph-fill ph-map-pin"></i> {{ item.location }}
                                         </a>
                                         <a v-if="item.link" :href="item.link" target="_blank" @mousedown.stop @touchstart.stop class="inline-flex items-center gap-1 text-xs text-blue-600 font-bold hover:underline bg-blue-50 px-2 py-1.5 rounded-lg border border-blue-100 transition-colors hover:bg-blue-100">
@@ -621,8 +622,16 @@
                                 <input v-model="editingEvent.time" type="time" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-soft-brown">
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-gray-500 ml-1">地點 (Naver Map)</label>
-                                <input v-model="editingEvent.location" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-soft-brown" placeholder="搜尋關鍵字">
+                                <label class="text-xs font-bold text-gray-500 ml-1">地點名稱 (顯示用)</label>
+                                <input v-model="editingEvent.location" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 outline-none focus:border-soft-brown" placeholder="例如：首爾塔">
+                            </div>
+                        </div>
+                        <!-- 新增 Map URL 輸入框 -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 ml-1">地圖網址 (Google/Naver Map)</label>
+                            <div class="relative">
+                                <i class="ph-bold ph-map-trifold absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input v-model="editingEvent.mapUrl" class="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2 outline-none focus:border-soft-brown text-sm" placeholder="貼上地圖連結 (選填)">
                             </div>
                         </div>
 
@@ -793,7 +802,8 @@
                     }
                 });
 
-                const editingEvent = reactive({ title: '', time: '', location: '', desc: '', note: '', image: null, link: '' });
+                // 新增 mapUrl 欄位
+                const editingEvent = reactive({ title: '', time: '', location: '', mapUrl: '', desc: '', note: '', image: null, link: '' });
                 
                 const tabs = [
                     { id: 'schedule', name: '行程', icon: 'ph-fill ph-calendar-check' },
@@ -1052,7 +1062,7 @@
 
                 const openAddModal = () => {
                     state.isEditing = false;
-                    Object.assign(editingEvent, { title: '', time: '', location: '', desc: '', note: '', image: null, link: '' });
+                    Object.assign(editingEvent, { title: '', time: '', location: '', mapUrl: '', desc: '', note: '', image: null, link: '' });
                     state.showModal = true;
                 };
 
